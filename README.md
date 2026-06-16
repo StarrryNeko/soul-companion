@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SoulCompanion 心晴
 
 面向大学生的心理健康科普与情绪支持助手。项目用于课程演示，包含 LLaMA-Factory 微调配置、RAG 知识库、安全危机识别、情绪记录工具、呼吸练习工具和 Gradio 前端。
@@ -71,3 +72,6 @@ soul-companion/
 - `data/knowledge_base/docs/`：RAG 文档。
 - `config/crisis_keywords.json`：危机关键词和固定回复模板。
 - `tests/test_cases.json`：端到端行为测试用例。
+=======
+# soul-companion
+>>>>>>> 48595f93d3058619a002e824d010e9270824ed34
