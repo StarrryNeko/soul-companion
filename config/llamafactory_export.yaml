@@ -1,0 +1,11 @@
+### model
+model_name_or_path: Qwen/Qwen2.5-1.5B-Instruct
+adapter_name_or_path: output/lora_adapter
+template: qwen
+trust_remote_code: true
+
+### export merged model
+export_dir: output/merged_model
+export_size: 2
+export_device: cpu
+export_legacy_format: false

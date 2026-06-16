@@ -1,0 +1,12 @@
+### model
+model_name_or_path: output/merged_model
+template: qwen
+trust_remote_code: true
+
+### export GPTQ INT4 model
+export_dir: output/merged_model_int4
+export_quantization_bit: 4
+export_quantization_dataset: data/training/mental_health_qa.json
+export_size: 2
+export_device: cpu
+export_legacy_format: false

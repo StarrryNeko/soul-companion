@@ -1,0 +1,2 @@
+"""SoulCompanion source package."""
+

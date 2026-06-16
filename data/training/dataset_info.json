@@ -1,0 +1,11 @@
+{
+  "mental_health_qa": {
+    "file_name": "mental_health_qa.json",
+    "formatting": "alpaca",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output"
+    }
+  }
+}
