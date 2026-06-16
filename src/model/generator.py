@@ -11,9 +11,12 @@ class ResponseGenerator:
         "你不能进行诊断、治疗、开药或替代专业心理咨询。"
     )
 
-    def __init__(self, model=None, tokenizer=None) -> None:
+    def __init__(self, model=None, tokenizer=None, fallback_client=None) -> None:
         self.model = model
         self.tokenizer = tokenizer
+        self.fallback_client = fallback_client
+        self.last_backend = "template"
+        self.last_error: str | None = None
 
     def generate(
         self,
@@ -22,9 +25,24 @@ class ResponseGenerator:
         chat_history: list | None = None,
         max_new_tokens: int = 512,
     ) -> str:
-        if self.model is None or self.tokenizer is None:
-            return self._template_response(user_input, retrieved_context or [])
-        return self._model_generate(user_input, retrieved_context or [], max_new_tokens)
+        context = retrieved_context or []
+        self.last_error = None
+        if self.model is not None and self.tokenizer is not None:
+            try:
+                self.last_backend = "local_model"
+                return self._model_generate(user_input, context, max_new_tokens)
+            except Exception as exc:
+                self.last_error = f"local_model: {exc}"
+
+        if self.fallback_client is not None:
+            try:
+                self.last_backend = "deepseek_api"
+                return self.fallback_client.generate(user_input, context, chat_history, max_new_tokens)
+            except Exception as exc:
+                self.last_error = f"{self.last_error}; deepseek_api: {exc}" if self.last_error else f"deepseek_api: {exc}"
+
+        self.last_backend = "template"
+        return self._template_response(user_input, context)
 
     def _model_generate(self, user_input: str, context: list[str], max_new_tokens: int) -> str:
         import torch
@@ -60,4 +78,3 @@ class ResponseGenerator:
             f"{prefix}你可以先把问题具体化，区分哪些部分可以行动、哪些部分暂时只能接纳。"
             "如果困扰持续存在，建议寻求学校心理咨询中心或专业人员支持。"
         )
-

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.error_handling.fallback import FallbackHandler
+from src.model.external_api import DeepSeekFallbackClient
 from src.intent.classifier import IntentClassifier
 from src.model.generator import ResponseGenerator
 from src.rag.retriever import KnowledgeRetriever
@@ -20,7 +21,7 @@ class MentalHealthPipeline:
         self.crisis_detector = CrisisDetector()
         self.intent_classifier = IntentClassifier()
         self.retriever = KnowledgeRetriever()
-        self.generator = ResponseGenerator()
+        self.generator = ResponseGenerator(fallback_client=DeepSeekFallbackClient())
         self.tools = {
             "crisis_resource": CrisisResourceTool(),
             "tool_emotion_log": EmotionLoggerTool(),
@@ -79,7 +80,13 @@ class MentalHealthPipeline:
             retrieved_context=[item["content"] for item in sources],
             chat_history=chat_history,
         )
-        return self._result(response, intent, rag_sources=sources)
+        return self._result(
+            response,
+            intent,
+            rag_sources=sources,
+            generation_backend=self.generator.last_backend,
+            error=self.generator.last_error,
+        )
 
     @staticmethod
     def _result(
@@ -89,6 +96,7 @@ class MentalHealthPipeline:
         tool_used: str | None = None,
         rag_sources: list | None = None,
         error: str | None = None,
+        generation_backend: str | None = None,
     ) -> dict:
         return {
             "response": response,
@@ -97,5 +105,5 @@ class MentalHealthPipeline:
             "tool_used": tool_used,
             "rag_sources": rag_sources or [],
             "error": error,
+            "generation_backend": generation_backend,
         }
-

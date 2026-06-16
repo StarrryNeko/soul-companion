@@ -1,5 +1,6 @@
 """Global settings for SoulCompanion."""
 
+import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -34,15 +35,16 @@ TOOLS_CONFIG = {
 }
 
 FALLBACK_API_CONFIG = {
-    "provider": "qwen-plus",
-    "api_key_env": "FALLBACK_API_KEY",
-    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "provider": "deepseek",
+    "api_key_env": "DEEPSEEK_API_KEY",
+    "base_url": "https://api.deepseek.com",
+    "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
     "timeout": 30,
 }
 
 UI_CONFIG = {
     "title": "心晴 - 心理健康支持助手",
     "disclaimer": "本系统仅提供心理健康科普和一般性情绪支持，不能替代专业心理咨询、医学诊断或治疗。",
-    "server_name": "0.0.0.0",
-    "server_port": 7860,
+    "server_name": os.getenv("GRADIO_SERVER_NAME", "127.0.0.1"),
+    "server_port": int(os.getenv("GRADIO_SERVER_PORT", "7860")),
 }
