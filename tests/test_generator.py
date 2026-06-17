@@ -30,6 +30,14 @@ def test_generator_can_switch_external_model_name() -> None:
     assert client.model == "deepseek-reasoner"
 
 
+def test_generator_reports_selected_local_model_label() -> None:
+    generator = ResponseGenerator()
+
+    generator.set_local_model(model=object(), tokenizer=object(), label="微调模型：长步数")
+
+    assert generator.get_selected_model_label() == "微调模型：长步数"
+
+
 def test_forced_local_model_error_is_not_silent_template() -> None:
     generator = ResponseGenerator()
     generator.set_chat_model("local_model")

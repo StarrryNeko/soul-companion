@@ -91,6 +91,7 @@ class MentalHealthPipeline:
     def _switch_local_model(self, option: dict) -> str:
         target_path = str(Path(option["path"]))
         if self.model_info.get("backend") == "local_model" and self.model_info.get("model_path") == target_path:
+            self.generator.local_model_label = option["label"]
             self.generator.set_chat_model("local_model")
             return f"已切换对话模型：{option['label']}\n{self.get_model_status()}"
 
@@ -109,7 +110,7 @@ class MentalHealthPipeline:
             }
             return f"模型加载失败或目录不存在：{option['label']}\n路径：{target_path}\n已临时切换到模板兜底回复。"
 
-        self.generator.set_local_model(model, tokenizer)
+        self.generator.set_local_model(model, tokenizer, option["label"])
         return f"已切换对话模型：{option['label']}\n{self.get_model_status()}"
 
     def _load_local_model(self, merged_model_path: str | None = None, label: str = ""):
@@ -217,9 +218,12 @@ class MentalHealthPipeline:
             error = f" | 加载错误：{info['load_error']}" if info.get("load_error") else ""
             return f"当前选择：{selected} | 本地模型：未加载{error}"
 
+        model_label = info.get("label") or selected
+        model_dir = Path(info["model_path"]).name
         return (
             f"当前选择：{selected} | "
-            f"本地模型：{info.get('label') or info['model_kind']} | "
+            f"本地模型：{model_label} | "
+            f"模型目录：{model_dir} | "
             f"量化：{info['load_quantization']} | "
             f"路径：{info['model_path']}"
         )

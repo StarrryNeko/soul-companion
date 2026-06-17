@@ -208,7 +208,7 @@ def create_app(pipeline) -> gr.Blocks:
             )
             with gr.Row():
                 with gr.Column(scale=3, elem_classes=["panel", "chat-panel"]):
-                    chatbot = gr.Chatbot(height=520, type="messages")
+                    chatbot = gr.Chatbot(height=520)
                     user_input = gr.Textbox(
                         label="输入",
                         placeholder="说说你现在的困扰，或输入一个心理健康相关问题",

@@ -23,6 +23,7 @@ class ResponseGenerator:
         self.tokenizer = tokenizer
         self.fallback_client = fallback_client
         self.backend_preference = "auto"
+        self.local_model_label = ""
         self.last_backend = "template"
         self.last_error: str | None = None
 
@@ -34,9 +35,10 @@ class ResponseGenerator:
         if external_model and self.fallback_client is not None:
             self.fallback_client.model = external_model
 
-    def set_local_model(self, model, tokenizer) -> None:
+    def set_local_model(self, model, tokenizer, label: str = "") -> None:
         self.model = model
         self.tokenizer = tokenizer
+        self.local_model_label = label
         self.backend_preference = "local_model"
 
     def clear_local_model(self) -> None:
@@ -55,7 +57,7 @@ class ResponseGenerator:
         if self.backend_preference == "auto":
             return "自动选择"
         if self.backend_preference == "local_model":
-            return "本地微调模型"
+            return self.local_model_label or "本地微调模型"
         if self.backend_preference == "deepseek_api":
             model = getattr(self.fallback_client, "model", "deepseek-chat")
             return f"DeepSeek API：{model}"
