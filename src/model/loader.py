@@ -46,7 +46,6 @@ class ModelLoader:
 
     def load(self):
         import torch
-        from peft import PeftModel
         from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
         model_path = self._resolve_model_path(self.merged_model_path or self.base_model_path)
@@ -73,6 +72,8 @@ class ModelLoader:
         )
 
         if self.lora_adapter_path and Path(self.lora_adapter_path).exists():
+            from peft import PeftModel
+
             model = PeftModel.from_pretrained(model, self.lora_adapter_path)
         self.last_model_info = {
             "model_path": model_path,
