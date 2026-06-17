@@ -23,7 +23,6 @@ class MentalHealthPipeline:
 
     CHAT_MODEL_OPTIONS = {
         "auto": {"label": "自动选择", "backend": "auto", "external_model": None},
-        "local_model": {"label": "本地微调模型", "backend": "local_model", "external_model": None},
         "deepseek-chat": {"label": "DeepSeek Chat", "backend": "deepseek_api", "external_model": "deepseek-chat"},
         "deepseek-reasoner": {
             "label": "DeepSeek Reasoner",
@@ -44,8 +43,10 @@ class MentalHealthPipeline:
             "model_kind": "none",
             "load_quantization": "none",
             "lora_adapter_path": "",
+            "label": "",
         }
-        model, tokenizer = self._load_local_model()
+        self.local_model_options = self._build_local_model_options()
+        model, tokenizer = self._load_local_model(MODEL_CONFIG["merged_model_path"], "微调模型：基础步数")
         self.generator = ResponseGenerator(model=model, tokenizer=tokenizer, fallback_client=DeepSeekFallbackClient())
         self.tools = {
             "crisis_resource": CrisisResourceTool(),
@@ -54,9 +55,18 @@ class MentalHealthPipeline:
         }
 
     def get_chat_model_choices(self) -> list[str]:
-        return [option["label"] for option in self.CHAT_MODEL_OPTIONS.values()]
+        local_labels = [option["label"] for option in self.local_model_options]
+        remote_labels = [option["label"] for option in self.CHAT_MODEL_OPTIONS.values()]
+        return [*local_labels, *remote_labels]
+
+    def get_default_chat_model_choice(self) -> str:
+        return self.CHAT_MODEL_OPTIONS["auto"]["label"]
 
     def switch_chat_model(self, selected_label: str) -> str:
+        local_option = next((option for option in self.local_model_options if option["label"] == selected_label), None)
+        if local_option is not None:
+            return self._switch_local_model(local_option)
+
         selected_option = next(
             (option for option in self.CHAT_MODEL_OPTIONS.values() if option["label"] == selected_label),
             None,
@@ -67,18 +77,51 @@ class MentalHealthPipeline:
         self.generator.set_chat_model(selected_option["backend"], selected_option["external_model"])
         return f"已切换对话模型：{selected_option['label']}\n{self.get_model_status()}"
 
-    def _load_local_model(self):
+    def _build_local_model_options(self) -> list[dict]:
+        return [
+            {
+                "label": item["label"],
+                "path": item["path"],
+                "backend": "local_model",
+            }
+            for item in MODEL_CONFIG.get("local_chat_models", [])
+        ]
+
+    def _switch_local_model(self, option: dict) -> str:
+        target_path = str(Path(option["path"]))
+        if self.model_info.get("backend") == "local_model" and self.model_info.get("model_path") == target_path:
+            self.generator.set_chat_model("local_model")
+            return f"已切换对话模型：{option['label']}\n{self.get_model_status()}"
+
+        self.generator.clear_local_model()
+        model, tokenizer = self._load_local_model(target_path, option["label"])
+        if model is None or tokenizer is None:
+            self.generator.set_chat_model("template")
+            self.model_info = {
+                "backend": "fallback",
+                "model_path": "",
+                "model_kind": "none",
+                "load_quantization": "none",
+                "lora_adapter_path": "",
+                "label": "",
+            }
+            return f"模型加载失败或目录不存在：{option['label']}\n路径：{target_path}\n已临时切换到模板兜底回复。"
+
+        self.generator.set_local_model(model, tokenizer)
+        return f"已切换对话模型：{option['label']}\n{self.get_model_status()}"
+
+    def _load_local_model(self, merged_model_path: str | None = None, label: str = ""):
         if os.getenv("SOUL_LOAD_LOCAL_MODEL", "1") != "1":
             return None, None
 
-        merged_model_path = Path(MODEL_CONFIG["merged_model_path"])
-        if not merged_model_path.exists():
+        model_path = Path(merged_model_path or MODEL_CONFIG["merged_model_path"])
+        if not model_path.exists():
             return None, None
 
         try:
-            loader = ModelLoader(merged_model_path=str(merged_model_path), lora_adapter_path=None)
+            loader = ModelLoader(merged_model_path=str(model_path), lora_adapter_path=None)
             model, tokenizer = loader.load()
-            self.model_info = {"backend": "local_model", **loader.last_model_info}
+            self.model_info = {"backend": "local_model", "label": label, **loader.last_model_info}
             return model, tokenizer
         except Exception as exc:
             print(f"Local merged model load failed, using fallback backend: {exc}")
@@ -128,7 +171,7 @@ class MentalHealthPipeline:
             except Exception as exc:
                 return self._result(self.fallback.handle_tool_failure("breathing_exercise", exc), intent)
 
-        sources = self._retrieve_context(text)
+        sources = self._retrieve_context(text) if intent == "mental_health" else []
         auto_emotion_record = self._auto_record_emotion(text, intent)
 
         response = self.generator.generate(
@@ -170,7 +213,7 @@ class MentalHealthPipeline:
 
         return (
             f"当前选择：{selected} | "
-            f"本地模型：{info['model_kind']} | "
+            f"本地模型：{info.get('label') or info['model_kind']} | "
             f"量化：{info['load_quantization']} | "
             f"路径：{info['model_path']}"
         )

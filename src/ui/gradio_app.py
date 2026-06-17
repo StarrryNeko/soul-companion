@@ -214,7 +214,7 @@ def create_app(pipeline) -> gr.Blocks:
                     with gr.Column(elem_classes=["model-switcher"]):
                         model_selector = gr.Dropdown(
                             choices=pipeline.get_chat_model_choices(),
-                            value=pipeline.get_chat_model_choices()[0],
+                            value=pipeline.get_default_chat_model_choice(),
                             label="选择模型",
                             interactive=True,
                         )

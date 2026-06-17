@@ -14,6 +14,8 @@ class KnowledgeRetriever:
         self.persist_dir = Path(persist_dir or RAG_CONFIG["persist_dir"])
         self.docs_dir = Path(docs_dir or RAG_CONFIG["docs_dir"])
         self.embedding_model = RAG_CONFIG["embedding_model"]
+        self._embedding_model = None
+        self._collection = None
 
     def retrieve(self, query: str, top_k: int | None = None) -> list[dict]:
         top_k = top_k or RAG_CONFIG["top_k"]
@@ -23,12 +25,8 @@ class KnowledgeRetriever:
             return self._retrieve_keyword(query, top_k)
 
     def _retrieve_chroma(self, query: str, top_k: int) -> list[dict]:
-        import chromadb
-        from sentence_transformers import SentenceTransformer
-
-        client = chromadb.PersistentClient(path=str(self.persist_dir))
-        collection = client.get_collection("mental_health_docs")
-        model = SentenceTransformer(self.embedding_model)
+        collection = self._get_collection()
+        model = self._get_embedding_model()
         embedding = model.encode([query], normalize_embeddings=True).tolist()[0]
         result = collection.query(query_embeddings=[embedding], n_results=top_k)
 
@@ -50,3 +48,17 @@ class KnowledgeRetriever:
         rows.sort(key=lambda item: item["score"], reverse=True)
         return rows[:top_k]
 
+    def _get_collection(self):
+        if self._collection is None:
+            import chromadb
+
+            client = chromadb.PersistentClient(path=str(self.persist_dir))
+            self._collection = client.get_collection("mental_health_docs")
+        return self._collection
+
+    def _get_embedding_model(self):
+        if self._embedding_model is None:
+            from sentence_transformers import SentenceTransformer
+
+            self._embedding_model = SentenceTransformer(self.embedding_model)
+        return self._embedding_model

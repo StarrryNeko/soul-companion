@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import gc
+
 from config.settings import MODEL_CONFIG
 
 
@@ -32,6 +34,23 @@ class ResponseGenerator:
         if external_model and self.fallback_client is not None:
             self.fallback_client.model = external_model
 
+    def set_local_model(self, model, tokenizer) -> None:
+        self.model = model
+        self.tokenizer = tokenizer
+        self.backend_preference = "local_model"
+
+    def clear_local_model(self) -> None:
+        self.model = None
+        self.tokenizer = None
+        gc.collect()
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
     def get_selected_model_label(self) -> str:
         if self.backend_preference == "auto":
             return "自动选择"
@@ -47,9 +66,10 @@ class ResponseGenerator:
         user_input: str,
         retrieved_context: list[str] | None = None,
         chat_history: list | None = None,
-        max_new_tokens: int = 512,
+        max_new_tokens: int | None = None,
     ) -> str:
         context = retrieved_context or []
+        token_budget = max_new_tokens or MODEL_CONFIG["max_new_tokens"]
         self.last_error = None
 
         if self.backend_preference == "template":
@@ -62,7 +82,7 @@ class ResponseGenerator:
         if should_try_local and self.model is not None and self.tokenizer is not None:
             try:
                 self.last_backend = "local_model"
-                return self._model_generate(user_input, context, max_new_tokens)
+                return self._model_generate(user_input, context, token_budget)
             except Exception as exc:
                 self.last_error = f"local_model: {exc}"
         elif self.backend_preference == "local_model":
@@ -71,7 +91,7 @@ class ResponseGenerator:
         if should_try_external and self.fallback_client is not None:
             try:
                 self.last_backend = "deepseek_api"
-                return self.fallback_client.generate(user_input, context, chat_history, max_new_tokens)
+                return self.fallback_client.generate(user_input, context, chat_history, token_budget)
             except Exception as exc:
                 self.last_error = f"{self.last_error}; deepseek_api: {exc}" if self.last_error else f"deepseek_api: {exc}"
 

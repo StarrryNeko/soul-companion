@@ -11,8 +11,25 @@ MODEL_CONFIG = {
     "model_cache_dir": os.getenv("SOUL_MODEL_CACHE_DIR", str(PROJECT_ROOT / "models")),
     "lora_adapter_path": str(PROJECT_ROOT / "output" / "lora_adapter"),
     "merged_model_path": str(PROJECT_ROOT / "output" / "merged_model"),
+    "local_chat_models": [
+        {
+            "key": "merged_model",
+            "label": "微调模型：基础步数",
+            "path": str(PROJECT_ROOT / "output" / "merged_model"),
+        },
+        {
+            "key": "merged_model_medium_steps",
+            "label": "微调模型：中等步数",
+            "path": str(PROJECT_ROOT / "output" / "merged_model_medium_steps"),
+        },
+        {
+            "key": "merged_model_long_steps",
+            "label": "微调模型：长步数",
+            "path": str(PROJECT_ROOT / "output" / "merged_model_long_steps"),
+        },
+    ],
     "quantization": "int4",
-    "max_new_tokens": 512,
+    "max_new_tokens": int(os.getenv("SOUL_MAX_NEW_TOKENS", "320")),
     "temperature": 0.4,
     "top_p": 0.85,
 }
