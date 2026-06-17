@@ -150,9 +150,15 @@ def create_app(pipeline) -> gr.Blocks:
 
     emotion_tool = EmotionLoggerTool()
 
+    def append_exchange(history: list | None, user_message: str, assistant_message: str) -> list:
+        rows = list(history or [])
+        rows.append({"role": "user", "content": user_message})
+        rows.append({"role": "assistant", "content": assistant_message})
+        return rows
+
     def respond(message: str, history: list) -> tuple[list, str, str]:
         result = pipeline.process(message, history)
-        history = history + [(message, result["response"])]
+        history = append_exchange(history, message, result["response"])
         error_line = f"\n错误：{result['error']}" if result.get("error") else ""
         status = (
             f"意图：{result['intent']} | "
@@ -177,7 +183,7 @@ def create_app(pipeline) -> gr.Blocks:
 
     def run_quick_exercise(prompt: str, history: list) -> tuple[list, str, str]:
         tool_result = pipeline.tools["tool_breathing"].execute(user_input=prompt)
-        history = history + [(prompt, tool_result["message"])]
+        history = append_exchange(history, prompt, tool_result["message"])
         status = (
             "意图：tool_breathing | "
             "工具：breathing_exercise | "
@@ -202,7 +208,7 @@ def create_app(pipeline) -> gr.Blocks:
             )
             with gr.Row():
                 with gr.Column(scale=3, elem_classes=["panel", "chat-panel"]):
-                    chatbot = gr.Chatbot(height=520)
+                    chatbot = gr.Chatbot(height=520, type="messages")
                     user_input = gr.Textbox(
                         label="输入",
                         placeholder="说说你现在的困扰，或输入一个心理健康相关问题",

@@ -79,7 +79,12 @@ class DeepSeekFallbackClient:
     def _build_messages(self, user_input: str, context: list[str], chat_history: list) -> list[dict]:
         messages = [{"role": "system", "content": self._system_prompt(context)}]
         for item in chat_history[-6:]:
-            if isinstance(item, (list, tuple)) and len(item) >= 2:
+            if isinstance(item, dict):
+                role = item.get("role")
+                content = item.get("content")
+                if role in {"user", "assistant"} and content:
+                    messages.append({"role": role, "content": str(content)})
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
                 user_message, assistant_message = item[0], item[1]
                 if user_message:
                     messages.append({"role": "user", "content": str(user_message)})
