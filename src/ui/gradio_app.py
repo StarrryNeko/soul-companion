@@ -153,12 +153,14 @@ def create_app(pipeline) -> gr.Blocks:
     def respond(message: str, history: list) -> tuple[list, str, str]:
         result = pipeline.process(message, history)
         history = history + [(message, result["response"])]
+        error_line = f"\n错误：{result['error']}" if result.get("error") else ""
         status = (
             f"意图：{result['intent']} | "
             f"工具：{result['tool_used'] or '无'} | "
             f"危机：{result['is_crisis']} | "
             f"生成后端：{result['generation_backend'] or '无'}\n"
             f"{pipeline.get_model_status()}"
+            f"{error_line}"
         )
         return history, "", status
 

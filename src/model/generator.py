@@ -88,6 +88,10 @@ class ResponseGenerator:
         elif self.backend_preference == "local_model":
             self.last_error = "local_model: no local model is loaded"
 
+        if self.backend_preference == "local_model":
+            self.last_backend = "local_model_error"
+            return self._backend_error_response("本地微调模型", self.last_error)
+
         if should_try_external and self.fallback_client is not None:
             try:
                 self.last_backend = "deepseek_api"
@@ -95,8 +99,17 @@ class ResponseGenerator:
             except Exception as exc:
                 self.last_error = f"{self.last_error}; deepseek_api: {exc}" if self.last_error else f"deepseek_api: {exc}"
 
+        if self.backend_preference == "deepseek_api":
+            self.last_backend = "deepseek_api_error"
+            return self._backend_error_response("DeepSeek API 模型", self.last_error)
+
         self.last_backend = "template"
         return self._template_response(user_input, context)
+
+    @staticmethod
+    def _backend_error_response(model_name: str, error: str | None) -> str:
+        detail = f"\n\n错误信息：{error}" if error else ""
+        return f"当前选择的{model_name}没有成功生成回复，请检查模型是否已加载、路径是否正确或 API Key 是否可用。{detail}"
 
     def _model_generate(self, user_input: str, context: list[str], max_new_tokens: int) -> str:
         context_text = "\n\n".join(context)
@@ -123,6 +136,9 @@ class ResponseGenerator:
         return text.strip()
 
     def _template_response(self, user_input: str, context: list[str]) -> str:
+        if self._is_greeting(user_input):
+            return "你好，我在这里。你可以直接和我聊聊最近的状态，也可以问一个心理健康相关的问题。"
+
         prefix = "我理解你提到的困扰。"
         if context:
             sources = "\n\n".join(context[:2])
@@ -135,3 +151,9 @@ class ResponseGenerator:
             f"{prefix}你可以先把问题具体化，区分哪些部分可以行动、哪些部分暂时只能接纳。"
             "如果困扰持续存在，建议寻求学校心理咨询中心或专业人员支持。"
         )
+
+    @staticmethod
+    def _is_greeting(user_input: str) -> bool:
+        text = user_input.strip().lower()
+        greetings = {"你好", "您好", "hello", "hi", "嗨", "在吗", "在吗？"}
+        return text in greetings

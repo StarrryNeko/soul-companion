@@ -28,3 +28,25 @@ def test_generator_can_switch_external_model_name() -> None:
 
     assert generator.backend_preference == "deepseek_api"
     assert client.model == "deepseek-reasoner"
+
+
+def test_forced_local_model_error_is_not_silent_template() -> None:
+    generator = ResponseGenerator()
+    generator.set_chat_model("local_model")
+
+    response = generator.generate("hello")
+
+    assert generator.last_backend == "local_model_error"
+    assert "没有成功生成回复" in response
+    assert "我理解你提到的困扰" not in response
+
+
+def test_template_greeting_is_not_distress_response() -> None:
+    generator = ResponseGenerator()
+    generator.set_chat_model("template")
+
+    response = generator.generate("你好")
+
+    assert generator.last_backend == "template"
+    assert "你好" in response
+    assert "困扰" not in response
