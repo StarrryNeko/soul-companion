@@ -39,8 +39,15 @@ pip install -r requirements.txt
 # 训练 LoRA Adapter，输出到 output/lora_adapter/
 llamafactory-cli train config/llamafactory_train.yaml
 
+# 训练增加 steps 的 LoRA Adapter，输出到 output/lora_adapter_long_steps/
+# 该配置不会覆盖原始 adapter，可用于和短 steps 模型做对比。
+llamafactory-cli train config/llamafactory_train_long_steps.yaml
+
 # 可选：导出合并模型，输出到 output/merged_model/
 llamafactory-cli export config/llamafactory_export.yaml
+
+# 可选：导出增加 steps 后的合并模型，输出到 output/merged_model_long_steps/
+llamafactory-cli export config/llamafactory_export_long_steps.yaml
 
 # 可选：基于合并模型导出 INT4，输出到 output/merged_model_int4/
 llamafactory-cli export config/llamafactory_export_int4.yaml
@@ -48,15 +55,49 @@ llamafactory-cli export config/llamafactory_export_int4.yaml
 
 训练数据采用 LLaMA-Factory Alpaca 格式，注册文件位于 `data/training/dataset_info.json`。
 
+## 微调效果评估对比
+
+新增评估脚本会对基础模型、原短 steps LoRA、增加 steps LoRA 使用同一组测试题生成回答，并输出明细表、汇总表和图表：
+
+```bash
+python scripts/evaluate_model_comparison.py
+```
+
+训练完成后，也可以直接绘制两个 adapter 的 loss 曲线对比：
+
+```bash
+python scripts/plot_training_loss_comparison.py
+```
+
+默认输出目录为 `output/evaluation_comparison/`，包含：
+
+- `responses.json`：各模型原始回答
+- `case_scores.csv`：逐题评分明细
+- `summary_by_model.csv`：模型整体平均分
+- `summary_by_category.csv`：不同能力维度平均分
+- `overall_score_comparison.png`：整体评分柱状图
+- `category_score_comparison.png`：分能力维度柱状图
+- `training_loss_comparison.png`：短 steps 与长 steps 训练 loss 曲线图
+
+如果已提前生成回答，也可以只复用回答文件重新打分和出图：
+
+```bash
+python scripts/evaluate_model_comparison.py --responses-json output/evaluation_comparison/responses.json
+```
+
 ## 目录结构
 
 ```text
 soul-companion/
   config/
     llamafactory_train.yaml
+    llamafactory_train_long_steps.yaml
     llamafactory_export.yaml
+    llamafactory_export_long_steps.yaml
     llamafactory_export_int4.yaml
   data/
+    evaluation/
+      model_eval_cases.json
     training/
       dataset_info.json
       mental_health_qa.json
