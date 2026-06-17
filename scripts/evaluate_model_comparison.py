@@ -1,4 +1,4 @@
-"""Compare base, short-step LoRA, and long-step LoRA models.
+"""Compare base, short-step, medium-step, and long-step LoRA models.
 
 The script can generate model responses and score them with a transparent
 keyword-coverage rubric. It writes CSV/JSON tables plus charts that are useful
@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 DEFAULT_MODELS = [
     "base=base:../models/Qwen2.5-1.5B-Instruct",
     "short_steps=adapter:output/lora_adapter",
+    "medium_steps=adapter:output/lora_adapter_medium_steps",
     "long_steps=adapter:output/lora_adapter_long_steps",
 ]
 
@@ -197,8 +198,9 @@ def make_charts(output_dir: Path, model_summary: list[dict], category_summary: l
     import matplotlib.pyplot as plt
     import pandas as pd
 
-    plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial Unicode MS", "DejaVu Sans"]
-    plt.rcParams["axes.unicode_minus"] = False
+    from plot_utils import configure_chinese_matplotlib
+
+    configure_chinese_matplotlib()
 
     model_df = pd.DataFrame(model_summary)
     ax = model_df.plot(kind="bar", x="model", y="avg_score_5", legend=False, color="#2f6f73", figsize=(7, 4))
@@ -256,6 +258,18 @@ def main() -> None:
     write_csv(output_dir / "case_scores.csv", scored_rows)
     write_csv(output_dir / "summary_by_model.csv", model_summary)
     write_csv(output_dir / "summary_by_category.csv", category_summary)
+    (output_dir / "case_scores.json").write_text(
+        json.dumps(scored_rows, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (output_dir / "summary_by_model.json").write_text(
+        json.dumps(model_summary, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (output_dir / "summary_by_category.json").write_text(
+        json.dumps(category_summary, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     make_charts(output_dir, model_summary, category_summary)
 
     print(f"wrote={output_dir}")

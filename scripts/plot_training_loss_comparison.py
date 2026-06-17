@@ -1,4 +1,4 @@
-"""Plot loss curves for the original and long-step LoRA training runs."""
+"""Plot loss curves for the short, medium, and long-step LoRA training runs."""
 
 from __future__ import annotations
 
@@ -45,8 +45,9 @@ def plot_loss(path: Path, rows: list[dict]) -> None:
     import matplotlib.pyplot as plt
     import pandas as pd
 
-    plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial Unicode MS", "DejaVu Sans"]
-    plt.rcParams["axes.unicode_minus"] = False
+    from plot_utils import configure_chinese_matplotlib
+
+    configure_chinese_matplotlib()
 
     df = pd.DataFrame(rows)
     fig, ax = plt.subplots(figsize=(8, 4.5))
@@ -68,6 +69,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--short-name", default="short_steps")
     parser.add_argument("--short-dir", default="output/lora_adapter")
+    parser.add_argument("--medium-name", default="medium_steps")
+    parser.add_argument("--medium-dir", default="output/lora_adapter_medium_steps")
     parser.add_argument("--long-name", default="long_steps")
     parser.add_argument("--long-dir", default="output/lora_adapter_long_steps")
     parser.add_argument("--output-dir", default="output/evaluation_comparison")
@@ -78,6 +81,7 @@ def main() -> None:
 
     rows = []
     rows.extend(load_loss_rows(args.short_name, resolve_path(args.short_dir)))
+    rows.extend(load_loss_rows(args.medium_name, resolve_path(args.medium_dir)))
     rows.extend(load_loss_rows(args.long_name, resolve_path(args.long_dir)))
 
     write_csv(output_dir / "training_loss_comparison.csv", rows)

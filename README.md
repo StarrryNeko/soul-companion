@@ -43,11 +43,18 @@ llamafactory-cli train config/llamafactory_train.yaml
 # 该配置不会覆盖原始 adapter，可用于和短 steps 模型做对比。
 llamafactory-cli train config/llamafactory_train_long_steps.yaml
 
+# 训练中等 steps 的 LoRA Adapter，输出到 output/lora_adapter_medium_steps/
+# 该配置将 max_steps 调整为 600，用于降低 long steps 过拟合风险并做三模型对比。
+llamafactory-cli train config/llamafactory_train_medium_steps.yaml
+
 # 可选：导出合并模型，输出到 output/merged_model/
 llamafactory-cli export config/llamafactory_export.yaml
 
 # 可选：导出增加 steps 后的合并模型，输出到 output/merged_model_long_steps/
 llamafactory-cli export config/llamafactory_export_long_steps.yaml
+
+# 可选：导出中等 steps 后的合并模型，输出到 output/merged_model_medium_steps/
+llamafactory-cli export config/llamafactory_export_medium_steps.yaml
 
 # 可选：基于合并模型导出 INT4，输出到 output/merged_model_int4/
 llamafactory-cli export config/llamafactory_export_int4.yaml
@@ -57,13 +64,13 @@ llamafactory-cli export config/llamafactory_export_int4.yaml
 
 ## 微调效果评估对比
 
-新增评估脚本会对基础模型、原短 steps LoRA、增加 steps LoRA 使用同一组测试题生成回答，并输出明细表、汇总表和图表：
+新增评估脚本会对基础模型、原短 steps LoRA、中等 steps LoRA、增加 steps LoRA 使用同一组测试题生成回答，并输出明细表、汇总表和图表：
 
 ```bash
 python scripts/evaluate_model_comparison.py
 ```
 
-训练完成后，也可以直接绘制两个 adapter 的 loss 曲线对比：
+训练完成后，也可以直接绘制 short、medium、long 三个 adapter 的 loss 曲线对比：
 
 ```bash
 python scripts/plot_training_loss_comparison.py
@@ -75,9 +82,12 @@ python scripts/plot_training_loss_comparison.py
 - `case_scores.csv`：逐题评分明细
 - `summary_by_model.csv`：模型整体平均分
 - `summary_by_category.csv`：不同能力维度平均分
+- `case_scores.json`：UTF-8 逐题评分明细
+- `summary_by_model.json`：UTF-8 模型整体平均分
+- `summary_by_category.json`：UTF-8 不同能力维度平均分
 - `overall_score_comparison.png`：整体评分柱状图
 - `category_score_comparison.png`：分能力维度柱状图
-- `training_loss_comparison.png`：短 steps 与长 steps 训练 loss 曲线图
+- `training_loss_comparison.png`：短、中、长 steps 训练 loss 曲线图
 
 如果已提前生成回答，也可以只复用回答文件重新打分和出图：
 
@@ -91,8 +101,10 @@ python scripts/evaluate_model_comparison.py --responses-json output/evaluation_c
 soul-companion/
   config/
     llamafactory_train.yaml
+    llamafactory_train_medium_steps.yaml
     llamafactory_train_long_steps.yaml
     llamafactory_export.yaml
+    llamafactory_export_medium_steps.yaml
     llamafactory_export_long_steps.yaml
     llamafactory_export_int4.yaml
   data/

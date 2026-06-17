@@ -103,3 +103,8 @@ class EmotionLoggerTool(BaseTool):
             return []
         payload = json.loads(self.log_path.read_text(encoding="utf-8"))
         return payload.get("records", [])[-100:]
+
+    def clear_history(self) -> dict:
+        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.log_path.write_text(json.dumps({"records": []}, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"success": True, "message": "情绪记录已清空。"}

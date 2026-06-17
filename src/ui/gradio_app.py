@@ -129,6 +129,12 @@ body,
     color: #735c10 !important;
     border-color: rgba(192, 151, 39, 0.26) !important;
 }
+
+.accent-clear button {
+    background: var(--coral) !important;
+    color: #7c3b23 !important;
+    border-color: rgba(190, 102, 64, 0.28) !important;
+}
 """
 
 
@@ -152,6 +158,22 @@ def create_app(pipeline) -> gr.Blocks:
     def load_history() -> list[list]:
         rows = emotion_tool.get_history()
         return [[item["timestamp"], item["emotion"], item["intensity"], item["note"]] for item in rows]
+
+    def clear_history() -> tuple[list[list], str]:
+        result = emotion_tool.clear_history()
+        return [], result["message"]
+
+    def run_quick_exercise(prompt: str, history: list) -> tuple[list, str, str]:
+        tool_result = pipeline.tools["tool_breathing"].execute(user_input=prompt)
+        history = history + [(prompt, tool_result["message"])]
+        status = (
+            "意图：tool_breathing | "
+            "工具：breathing_exercise | "
+            "危机：False | "
+            "生成后端：无\n"
+            f"{pipeline.get_model_status()}"
+        )
+        return history, "", status
 
     theme = gr.themes.Soft(
         primary_hue="green",
@@ -185,13 +207,33 @@ def create_app(pipeline) -> gr.Blocks:
                         interactive=False,
                     )
                     refresh = gr.Button("刷新记录", elem_classes=["accent-refresh"])
+                    clear_records = gr.Button("一键清理记录", elem_classes=["accent-clear"])
                     gr.Markdown("### 快捷练习")
-                    breathing = gr.Button("推荐一个放松练习", elem_classes=["accent-breathing"])
+                    breathing = gr.Button("呼吸放松", elem_classes=["accent-breathing"])
+                    pressure = gr.Button("压力卸载", elem_classes=["accent-breathing"])
+                    sleep = gr.Button("睡前安稳", elem_classes=["accent-breathing"])
+                    emotion_template = gr.Button("记录心情模板", elem_classes=["accent-refresh"])
 
         send.click(respond, [user_input, chatbot], [chatbot, user_input, status])
         user_input.submit(respond, [user_input, chatbot], [chatbot, user_input, status])
         clear.click(lambda: ([], ""), outputs=[chatbot, status])
         refresh.click(load_history, outputs=emotion_table)
-        breathing.click(lambda: "我现在很紧张，能不能推荐一个呼吸练习？", outputs=user_input)
+        clear_records.click(clear_history, outputs=[emotion_table, status])
+        breathing.click(
+            lambda history: run_quick_exercise("我现在很紧张，想做一个呼吸放松练习。", history),
+            inputs=chatbot,
+            outputs=[chatbot, user_input, status],
+        )
+        pressure.click(
+            lambda history: run_quick_exercise("我最近压力很大，想做一个肩颈和身体放松练习。", history),
+            inputs=chatbot,
+            outputs=[chatbot, user_input, status],
+        )
+        sleep.click(
+            lambda history: run_quick_exercise("我今晚有点失眠，想做一个睡前放松练习。", history),
+            inputs=chatbot,
+            outputs=[chatbot, user_input, status],
+        )
+        emotion_template.click(lambda: "帮我记录心情：我现在感到____，强度__分，原因是____。", outputs=user_input)
 
     return demo

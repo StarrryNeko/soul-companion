@@ -18,6 +18,14 @@ def test_emotion_logger_tool(tmp_path) -> None:
     assert tool.get_history()[0]["emotion"] == "焦虑"
 
 
+def test_emotion_logger_clear_history(tmp_path) -> None:
+    tool = EmotionLoggerTool(log_path=str(tmp_path / "emotion_logs.json"))
+    tool.execute(**tool.parse("帮我记录心情：焦虑，7分"))
+    result = tool.clear_history()
+    assert result["success"] is True
+    assert tool.get_history() == []
+
+
 def test_emotion_logger_auto_record_detection() -> None:
     tool = EmotionLoggerTool()
     assert tool.should_auto_record("我今天有点低落，强度6分", "mental_health") is True
