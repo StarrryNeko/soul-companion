@@ -21,6 +21,18 @@ from src.tools.emotion_logger import EmotionLoggerTool
 class MentalHealthPipeline:
     """Route user input through safety, intent, tools, RAG, and generation."""
 
+    CHAT_MODEL_OPTIONS = {
+        "auto": {"label": "自动选择", "backend": "auto", "external_model": None},
+        "local_model": {"label": "本地微调模型", "backend": "local_model", "external_model": None},
+        "deepseek-chat": {"label": "DeepSeek Chat", "backend": "deepseek_api", "external_model": "deepseek-chat"},
+        "deepseek-reasoner": {
+            "label": "DeepSeek Reasoner",
+            "backend": "deepseek_api",
+            "external_model": "deepseek-reasoner",
+        },
+        "template": {"label": "模板兜底回复", "backend": "template", "external_model": None},
+    }
+
     def __init__(self) -> None:
         self.fallback = FallbackHandler()
         self.crisis_detector = CrisisDetector()
@@ -40,6 +52,20 @@ class MentalHealthPipeline:
             "tool_emotion_log": EmotionLoggerTool(),
             "tool_breathing": BreathingExerciseTool(),
         }
+
+    def get_chat_model_choices(self) -> list[str]:
+        return [option["label"] for option in self.CHAT_MODEL_OPTIONS.values()]
+
+    def switch_chat_model(self, selected_label: str) -> str:
+        selected_option = next(
+            (option for option in self.CHAT_MODEL_OPTIONS.values() if option["label"] == selected_label),
+            None,
+        )
+        if selected_option is None:
+            return f"未找到模型选项：{selected_label}"
+
+        self.generator.set_chat_model(selected_option["backend"], selected_option["external_model"])
+        return f"已切换对话模型：{selected_option['label']}\n{self.get_model_status()}"
 
     def _load_local_model(self):
         if os.getenv("SOUL_LOAD_LOCAL_MODEL", "1") != "1":
@@ -138,12 +164,14 @@ class MentalHealthPipeline:
 
     def get_model_status(self) -> str:
         info = self.model_info
+        selected = self.generator.get_selected_model_label()
         if info["backend"] != "local_model":
-            return "模型：未加载本地模型，当前使用 fallback 后端"
+            return f"当前选择：{selected} | 本地模型：未加载"
 
         return (
-            f"模型：{info['model_kind']} | "
-            f"加载量化：{info['load_quantization']} | "
+            f"当前选择：{selected} | "
+            f"本地模型：{info['model_kind']} | "
+            f"量化：{info['load_quantization']} | "
             f"路径：{info['model_path']}"
         )
 

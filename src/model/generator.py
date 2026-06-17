@@ -20,8 +20,27 @@ class ResponseGenerator:
         self.model = model
         self.tokenizer = tokenizer
         self.fallback_client = fallback_client
+        self.backend_preference = "auto"
         self.last_backend = "template"
         self.last_error: str | None = None
+
+    def set_chat_model(self, backend: str, external_model: str | None = None) -> None:
+        allowed_backends = {"auto", "local_model", "deepseek_api", "template"}
+        if backend not in allowed_backends:
+            raise ValueError(f"Unsupported chat backend: {backend}")
+        self.backend_preference = backend
+        if external_model and self.fallback_client is not None:
+            self.fallback_client.model = external_model
+
+    def get_selected_model_label(self) -> str:
+        if self.backend_preference == "auto":
+            return "自动选择"
+        if self.backend_preference == "local_model":
+            return "本地微调模型"
+        if self.backend_preference == "deepseek_api":
+            model = getattr(self.fallback_client, "model", "deepseek-chat")
+            return f"DeepSeek API：{model}"
+        return "模板兜底回复"
 
     def generate(
         self,
@@ -32,14 +51,24 @@ class ResponseGenerator:
     ) -> str:
         context = retrieved_context or []
         self.last_error = None
-        if self.model is not None and self.tokenizer is not None:
+
+        if self.backend_preference == "template":
+            self.last_backend = "template"
+            return self._template_response(user_input, context)
+
+        should_try_local = self.backend_preference in {"auto", "local_model"}
+        should_try_external = self.backend_preference in {"auto", "deepseek_api"}
+
+        if should_try_local and self.model is not None and self.tokenizer is not None:
             try:
                 self.last_backend = "local_model"
                 return self._model_generate(user_input, context, max_new_tokens)
             except Exception as exc:
                 self.last_error = f"local_model: {exc}"
+        elif self.backend_preference == "local_model":
+            self.last_error = "local_model: no local model is loaded"
 
-        if self.fallback_client is not None:
+        if should_try_external and self.fallback_client is not None:
             try:
                 self.last_backend = "deepseek_api"
                 return self.fallback_client.generate(user_input, context, chat_history, max_new_tokens)

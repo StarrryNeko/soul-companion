@@ -135,6 +135,13 @@ body,
     color: #7c3b23 !important;
     border-color: rgba(190, 102, 64, 0.28) !important;
 }
+
+.model-switcher {
+    background: rgba(255, 255, 255, 0.64);
+    border: 1px solid rgba(85, 166, 103, 0.18);
+    border-radius: 8px;
+    padding: 12px;
+}
 """
 
 
@@ -162,6 +169,9 @@ def create_app(pipeline) -> gr.Blocks:
     def clear_history() -> tuple[list[list], str]:
         result = emotion_tool.clear_history()
         return [], result["message"]
+
+    def switch_model(selected_model: str) -> str:
+        return pipeline.switch_chat_model(selected_model)
 
     def run_quick_exercise(prompt: str, history: list) -> tuple[list, str, str]:
         tool_result = pipeline.tools["tool_breathing"].execute(user_input=prompt)
@@ -200,6 +210,15 @@ def create_app(pipeline) -> gr.Blocks:
                         clear = gr.Button("清空")
                     status = gr.Textbox(label="系统状态", interactive=False)
                 with gr.Column(scale=2, elem_classes=["panel", "side-panel"]):
+                    gr.Markdown("### 对话模型")
+                    with gr.Column(elem_classes=["model-switcher"]):
+                        model_selector = gr.Dropdown(
+                            choices=pipeline.get_chat_model_choices(),
+                            value=pipeline.get_chat_model_choices()[0],
+                            label="选择模型",
+                            interactive=True,
+                        )
+                        switch_model_button = gr.Button("切换模型", variant="primary")
                     gr.Markdown("### 情绪记录")
                     emotion_table = gr.Dataframe(
                         headers=["时间", "情绪", "强度", "备注"],
@@ -216,6 +235,7 @@ def create_app(pipeline) -> gr.Blocks:
 
         send.click(respond, [user_input, chatbot], [chatbot, user_input, status])
         user_input.submit(respond, [user_input, chatbot], [chatbot, user_input, status])
+        switch_model_button.click(switch_model, inputs=model_selector, outputs=status)
         clear.click(lambda: ([], ""), outputs=[chatbot, status])
         refresh.click(load_history, outputs=emotion_table)
         clear_records.click(clear_history, outputs=[emotion_table, status])
