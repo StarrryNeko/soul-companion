@@ -96,12 +96,14 @@ class MentalHealthPipeline:
 
         if intent == "tool_breathing":
             try:
+                self._auto_record_emotion(text, intent)
                 tool_result = self.tools[intent].execute(user_input=text)
                 return self._result(tool_result["message"], intent, tool_used="breathing_exercise")
             except Exception as exc:
                 return self._result(self.fallback.handle_tool_failure("breathing_exercise", exc), intent)
 
         sources = self._retrieve_context(text)
+        auto_emotion_record = self._auto_record_emotion(text, intent)
 
         response = self.generator.generate(
             text,
@@ -114,6 +116,7 @@ class MentalHealthPipeline:
             rag_sources=sources,
             generation_backend=self.generator.last_backend,
             error=self.generator.last_error,
+            auto_emotion_record=auto_emotion_record,
         )
 
     def _retrieve_context(self, text: str) -> list[dict]:
@@ -121,6 +124,17 @@ class MentalHealthPipeline:
             return self.retriever.retrieve(text)
         except Exception:
             return []
+
+    def _auto_record_emotion(self, text: str, intent: str) -> dict | None:
+        tool = self.tools["tool_emotion_log"]
+        try:
+            if not tool.should_auto_record(text, intent):
+                return None
+            parsed = tool.parse(text)
+            result = tool.execute(**parsed)
+            return result["data"]
+        except Exception:
+            return None
 
     def get_model_status(self) -> str:
         info = self.model_info
@@ -142,6 +156,7 @@ class MentalHealthPipeline:
         rag_sources: list | None = None,
         error: str | None = None,
         generation_backend: str | None = None,
+        auto_emotion_record: dict | None = None,
     ) -> dict:
         return {
             "response": response,
@@ -151,4 +166,5 @@ class MentalHealthPipeline:
             "rag_sources": rag_sources or [],
             "error": error,
             "generation_backend": generation_backend,
+            "auto_emotion_record": auto_emotion_record,
         }
