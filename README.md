@@ -70,6 +70,12 @@ llamafactory-cli export config/llamafactory_export_int4.yaml
 python scripts/evaluate_model_comparison.py
 ```
 
+首次在云电脑上运行时，建议先用 1 条样例做连通性测试，确认模型路径、adapter 路径和显存环境正常：
+
+```bash
+python scripts/evaluate_model_comparison.py --limit-cases 1 --max-new-tokens 80
+```
+
 训练完成后，也可以直接绘制 short、medium、long 三个 adapter 的 loss 曲线对比：
 
 ```bash

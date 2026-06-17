@@ -45,19 +45,15 @@ def plot_loss(path: Path, rows: list[dict]) -> None:
     import matplotlib.pyplot as plt
     import pandas as pd
 
-    from plot_utils import configure_chinese_matplotlib
-
-    configure_chinese_matplotlib()
-
     df = pd.DataFrame(rows)
     fig, ax = plt.subplots(figsize=(8, 4.5))
     for run, group in df.groupby("run"):
         group = group.sort_values("step")
         ax.plot(group["step"], group["loss"], marker="o", markersize=3, linewidth=1.8, label=run)
 
-    ax.set_title("不同训练 steps 的 Loss 曲线对比")
-    ax.set_xlabel("训练 step")
-    ax.set_ylabel("training loss")
+    ax.set_title("Training Loss Comparison Across Step Settings")
+    ax.set_xlabel("Training Step")
+    ax.set_ylabel("Training Loss")
     ax.grid(True, alpha=0.25)
     ax.legend()
     plt.tight_layout()
