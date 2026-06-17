@@ -28,7 +28,7 @@ MODEL_CONFIG = {
             "path": str(PROJECT_ROOT / "output" / "merged_model_long_steps"),
         },
     ],
-    "quantization": "int4",
+    "quantization": "none",
     "max_new_tokens": int(os.getenv("SOUL_MAX_NEW_TOKENS", "320")),
     "temperature": 0.4,
     "top_p": 0.85,

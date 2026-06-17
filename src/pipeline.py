@@ -44,6 +44,7 @@ class MentalHealthPipeline:
             "load_quantization": "none",
             "lora_adapter_path": "",
             "label": "",
+            "load_error": "",
         }
         self.local_model_options = self._build_local_model_options()
         model, tokenizer = self._load_local_model(MODEL_CONFIG["merged_model_path"], "微调模型：基础步数")
@@ -104,6 +105,7 @@ class MentalHealthPipeline:
                 "load_quantization": "none",
                 "lora_adapter_path": "",
                 "label": "",
+                "load_error": self.model_info.get("load_error", ""),
             }
             return f"模型加载失败或目录不存在：{option['label']}\n路径：{target_path}\n已临时切换到模板兜底回复。"
 
@@ -112,18 +114,21 @@ class MentalHealthPipeline:
 
     def _load_local_model(self, merged_model_path: str | None = None, label: str = ""):
         if os.getenv("SOUL_LOAD_LOCAL_MODEL", "1") != "1":
+            self.model_info["load_error"] = "SOUL_LOAD_LOCAL_MODEL is not 1"
             return None, None
 
         model_path = Path(merged_model_path or MODEL_CONFIG["merged_model_path"])
         if not model_path.exists():
+            self.model_info["load_error"] = f"model path does not exist: {model_path}"
             return None, None
 
         try:
             loader = ModelLoader(merged_model_path=str(model_path), lora_adapter_path=None)
             model, tokenizer = loader.load()
-            self.model_info = {"backend": "local_model", "label": label, **loader.last_model_info}
+            self.model_info = {"backend": "local_model", "label": label, "load_error": "", **loader.last_model_info}
             return model, tokenizer
         except Exception as exc:
+            self.model_info["load_error"] = f"{type(exc).__name__}: {exc}"
             print(f"Local merged model load failed, using fallback backend: {exc}")
             return None, None
 
@@ -209,7 +214,8 @@ class MentalHealthPipeline:
         info = self.model_info
         selected = self.generator.get_selected_model_label()
         if info["backend"] != "local_model":
-            return f"当前选择：{selected} | 本地模型：未加载"
+            error = f" | 加载错误：{info['load_error']}" if info.get("load_error") else ""
+            return f"当前选择：{selected} | 本地模型：未加载{error}"
 
         return (
             f"当前选择：{selected} | "
