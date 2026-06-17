@@ -4,6 +4,7 @@ torch==2.7.0+cu128; platform_system != "Windows"
 torch>=2.1.0; platform_system == "Windows"
 llamafactory[torch,metrics]>=0.9.0
 modelscope>=1.14.0
+optimum>=1.24.0
 transformers>=4.37.0
 peft>=0.7.0
 accelerate>=0.25.0

@@ -18,9 +18,12 @@ class ModelLoader:
         quantization: str | None = None,
     ) -> None:
         self.base_model_path = base_model_path or MODEL_CONFIG["base_model"]
-        self.lora_adapter_path = lora_adapter_path or MODEL_CONFIG["lora_adapter_path"]
         self.merged_model_path = merged_model_path
+        self.lora_adapter_path = (
+            lora_adapter_path if lora_adapter_path is not None else None if merged_model_path else MODEL_CONFIG["lora_adapter_path"]
+        )
         self.quantization = quantization or MODEL_CONFIG["quantization"]
+        self.last_model_info: dict = {}
 
     def _resolve_model_path(self, model_path: str) -> str:
         path = Path(model_path)
@@ -47,6 +50,9 @@ class ModelLoader:
         from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
         model_path = self._resolve_model_path(self.merged_model_path or self.base_model_path)
+        model_kind = "merged_model" if self.merged_model_path else "base_model"
+        if self.lora_adapter_path:
+            model_kind = "base_model_plus_lora"
         quant_config = None
         if self.quantization == "int4":
             quant_config = BitsAndBytesConfig(
@@ -68,4 +74,10 @@ class ModelLoader:
 
         if self.lora_adapter_path and Path(self.lora_adapter_path).exists():
             model = PeftModel.from_pretrained(model, self.lora_adapter_path)
+        self.last_model_info = {
+            "model_path": model_path,
+            "model_kind": model_kind,
+            "load_quantization": self.quantization or "none",
+            "lora_adapter_path": self.lora_adapter_path or "",
+        }
         return model, tokenizer

@@ -13,8 +13,8 @@ MODEL_CONFIG = {
     "merged_model_path": str(PROJECT_ROOT / "output" / "merged_model"),
     "quantization": "int4",
     "max_new_tokens": 512,
-    "temperature": 0.7,
-    "top_p": 0.9,
+    "temperature": 0.4,
+    "top_p": 0.85,
 }
 
 RAG_CONFIG = {

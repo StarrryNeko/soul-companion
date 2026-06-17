@@ -23,6 +23,10 @@ class IntentClassifier:
         "难过",
         "烦躁",
         "低落",
+        "崩溃",
+        "内耗",
+        "害怕",
+        "担心",
     ]
 
     def classify(self, user_input: str) -> str:
@@ -34,4 +38,3 @@ class IntentClassifier:
         if any(keyword in text for keyword in self.mental_health_keywords):
             return "mental_health"
         return "general"
-
