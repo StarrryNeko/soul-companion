@@ -22,12 +22,31 @@ class ModelLoader:
         self.merged_model_path = merged_model_path
         self.quantization = quantization or MODEL_CONFIG["quantization"]
 
+    def _resolve_model_path(self, model_path: str) -> str:
+        path = Path(model_path)
+        if path.exists():
+            return str(path)
+
+        if not MODEL_CONFIG.get("use_modelscope", True):
+            return model_path
+
+        try:
+            from modelscope import snapshot_download
+        except ImportError as exc:
+            raise RuntimeError(
+                "ModelScope is enabled but not installed. Run `pip install modelscope` "
+                "or set SOUL_USE_MODELSCOPE=0 to use another local model path."
+            ) from exc
+
+        cache_dir = MODEL_CONFIG.get("model_cache_dir")
+        return snapshot_download(model_path, cache_dir=cache_dir)
+
     def load(self):
         import torch
         from peft import PeftModel
         from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-        model_path = self.merged_model_path or self.base_model_path
+        model_path = self._resolve_model_path(self.merged_model_path or self.base_model_path)
         quant_config = None
         if self.quantization == "int4":
             quant_config = BitsAndBytesConfig(

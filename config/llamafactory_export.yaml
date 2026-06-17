@@ -1,5 +1,6 @@
 ### model
 model_name_or_path: Qwen/Qwen2.5-1.5B-Instruct
+use_modelscope: true
 adapter_name_or_path: output/lora_adapter
 template: qwen
 trust_remote_code: true

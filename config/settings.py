@@ -6,7 +6,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_CONFIG = {
-    "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "base_model": os.getenv("SOUL_BASE_MODEL", "Qwen/Qwen2.5-1.5B-Instruct"),
+    "use_modelscope": os.getenv("SOUL_USE_MODELSCOPE", "1") == "1",
+    "model_cache_dir": os.getenv("SOUL_MODEL_CACHE_DIR", str(PROJECT_ROOT / "models")),
     "lora_adapter_path": str(PROJECT_ROOT / "output" / "lora_adapter"),
     "merged_model_path": str(PROJECT_ROOT / "output" / "merged_model"),
     "quantization": "int4",
