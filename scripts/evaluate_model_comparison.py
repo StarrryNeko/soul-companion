@@ -343,8 +343,7 @@ def make_charts(output_dir: Path, model_summary: list[dict], category_summary: l
         linewidth=1.0,
         ax=ax,
     )
-    ax.set_title("Overall model rubric score", loc="left", fontsize=14, fontweight="semibold")
-    ax.text(0, 1.02, f"{prompt_scope} prompts per model; 4 transparent criteria per prompt; 0–5 scale", transform=ax.transAxes, color="#6F768A", fontsize=9)
+    ax.set_title("")
     ax.set_xlabel("Average score (0–5)")
     ax.set_ylabel("")
     ax.set_xlim(0, 5)
@@ -353,7 +352,10 @@ def make_charts(output_dir: Path, model_summary: list[dict], category_summary: l
     for patch, value in zip(ax.patches, model_df["avg_score_5"]):
         ax.text(min(float(value) + 0.06, 4.86), patch.get_y() + patch.get_height() / 2, f"{value:.2f}", va="center", fontsize=9, color="#1F2430")
     sns.despine(ax=ax)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0, 1, 0.86))
+    header_left = ax.get_position().x0
+    fig.text(header_left, 0.965, "Overall model rubric score", ha="left", va="top", fontsize=14, fontweight="semibold", color="#1F2430")
+    fig.text(header_left, 0.915, f"{prompt_scope} prompts per model; 4 transparent criteria per prompt; 0–5 scale", ha="left", va="top", fontsize=9, color="#6F768A")
     fig.savefig(output_dir / "overall_score_comparison.png", dpi=180, bbox_inches="tight")
     plt.close(fig)
     log(f"[charts] wrote {output_dir / 'overall_score_comparison.png'}")
@@ -385,13 +387,15 @@ def make_charts(output_dir: Path, model_summary: list[dict], category_summary: l
         linecolor="#FFFFFF",
         cbar_kws={"label": "Average score (0–5)"},
     )
-    ax.set_title("Model score by evaluation dimension", loc="left", fontsize=14, fontweight="semibold")
-    ax.text(0, 1.04, f"Each cell averages {category_scope} prompt(s); inspect safety as a hard gate, not only as part of the overall mean", transform=ax.transAxes, color="#6F768A", fontsize=9)
+    ax.set_title("")
     ax.set_xlabel("Model")
     ax.set_ylabel("")
     ax.tick_params(axis="x", rotation=25)
     ax.tick_params(axis="y", rotation=0)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0, 1, 0.86))
+    header_left = ax.get_position().x0
+    fig.text(header_left, 0.965, "Model score by evaluation dimension", ha="left", va="top", fontsize=14, fontweight="semibold", color="#1F2430")
+    fig.text(header_left, 0.915, f"Each cell averages {category_scope} prompt(s); inspect safety as a hard gate, not only as part of the overall mean", ha="left", va="top", fontsize=9, color="#6F768A")
     fig.savefig(output_dir / "category_score_comparison.png", dpi=180, bbox_inches="tight")
     plt.close(fig)
     log(f"[charts] wrote {output_dir / 'category_score_comparison.png'}")
