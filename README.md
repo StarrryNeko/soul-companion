@@ -47,6 +47,18 @@ llamafactory-cli train config/llamafactory_train_long_steps.yaml
 # 该配置将 max_steps 调整为 600，用于降低 long steps 过拟合风险并做三模型对比。
 llamafactory-cli train config/llamafactory_train_medium_steps.yaml
 
+# 参数消融实验：降低 LoRA rank
+llamafactory-cli train config/llamafactory_train_r8.yaml
+
+# 参数消融实验：降低学习率并增强正则化
+llamafactory-cli train config/llamafactory_train_regularized.yaml
+
+# 参数消融实验：将 LoRA 扩展到 Attention + MLP 投影层
+llamafactory-cli train config/llamafactory_train_all_linear.yaml
+
+# 资源实验：4-bit QLoRA（需要 CUDA + bitsandbytes）
+llamafactory-cli train config/llamafactory_train_qlora.yaml
+
 # 可选：导出合并模型，输出到 output/merged_model/
 llamafactory-cli export config/llamafactory_export.yaml
 
@@ -100,6 +112,29 @@ python scripts/plot_training_loss_comparison.py
 ```bash
 python scripts/evaluate_model_comparison.py --responses-json output/evaluation_comparison/responses.json
 ```
+
+参数实验可通过重复传入 `--model` 纳入同一套评估，例如：
+
+```bash
+python scripts/evaluate_model_comparison.py \
+  --model base=base:../models/Qwen2.5-1.5B-Instruct \
+  --model baseline=adapter:output/lora_adapter \
+  --model r8=adapter:output/lora_adapter_r8 \
+  --model regularized=adapter:output/lora_adapter_regularized \
+  --model all_linear=adapter:output/lora_adapter_all_linear \
+  --model qlora=adapter:output/lora_adapter_qlora
+```
+
+## 测试证据采集
+
+```bash
+mkdir -p artifacts
+python scripts/validate_data.py | tee artifacts/data_validation.txt
+pytest -q -ra --junitxml=artifacts/pytest.xml | tee artifacts/pytest_output.txt
+python scripts/evaluate.py --output artifacts/pipeline_case_results.json | tee artifacts/pipeline_case_output.txt
+```
+
+`pytest` 覆盖 20 个离线单元/集成测试；`evaluate.py` 保存 16 条端到端场景的完整回复、路由、工具、RAG 来源和生成后端。提交时保留 `artifacts/` 中的轻量证据文件，不提交模型权重。
 
 ## 目录结构
 
