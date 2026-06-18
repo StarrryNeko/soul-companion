@@ -76,7 +76,7 @@ llamafactory-cli export config/llamafactory_export_int4.yaml
 
 ## 微调效果评估对比
 
-新增评估脚本会对基础模型、原短 steps LoRA、中等 steps LoRA、增加 steps LoRA 使用同一组测试题生成回答，并输出明细表、汇总表和图表：
+评估脚本默认使用 `model_eval_cases_v2.json` 的20题平衡评估集（五个维度、每维四题），对基础模型和各 LoRA adapter 使用同一组测试题生成回答。评分采用同义表达、结构约束、否定条件和安全规则组成的透明量表，而不是要求回答逐字命中抽象短语。
 
 ```bash
 python scripts/evaluate_model_comparison.py
@@ -104,7 +104,7 @@ python scripts/plot_training_loss_comparison.py
 - `summary_by_model.json`：UTF-8 模型整体平均分
 - `summary_by_category.json`：UTF-8 不同能力维度平均分
 - `overall_score_comparison.png`：整体评分柱状图
-- `category_score_comparison.png`：分能力维度柱状图
+- `category_score_comparison.png`：六模型×五能力维度热力图
 - `training_loss_comparison.png`：短、中、长 steps 训练 loss 曲线图
 
 如果已提前生成回答，也可以只复用回答文件重新打分和出图：
@@ -151,6 +151,7 @@ soul-companion/
   data/
     evaluation/
       model_eval_cases.json
+      model_eval_cases_v2.json
     training/
       dataset_info.json
       mental_health_qa.json

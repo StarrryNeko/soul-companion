@@ -67,8 +67,8 @@ python scripts/evaluate_model_comparison.py \
 
 截图建议：
 
-1. 总体均分图，文件名 `eval_overall.png`。
-2. 五个能力维度对比图，文件名 `eval_categories.png`。
+1. 20题总体均分横向排序图，文件名 `eval_overall.png`。
+2. 五个能力维度热力图，文件名 `eval_categories.png`。
 3. 至少一组基础模型与最佳 adapter 的原始回答对照，文件名 `eval_response_example.png`。
 4. LoRA 与 QLoRA 显存对比证据，文件名 `eval_vram.png`。
 

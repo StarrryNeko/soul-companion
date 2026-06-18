@@ -12,6 +12,7 @@ import csv
 import gc
 import json
 from pathlib import Path
+import re
 import sys
 import time
 
@@ -157,7 +158,8 @@ def generate_for_model(model_spec: dict[str, str], cases: list[dict], args: argp
                 "category": case["category"],
                 "category_label": case["category_label"],
                 "input": case["input"],
-                "expected_points": case["expected_points"],
+                "expected_points": case.get("expected_points", []),
+                "criteria": case.get("criteria", []),
                 "answer": answer,
                 "elapsed_sec": elapsed,
             }
@@ -172,25 +174,82 @@ def generate_for_model(model_spec: dict[str, str], cases: list[dict], args: argp
     return rows
 
 
-def score_answer(answer: str, expected_points: list[str]) -> tuple[float, int]:
+def extract_list_items(answer: str) -> list[str]:
+    """Extract markdown/bulleted/numbered items for instruction checks."""
+    pattern = re.compile(r"(?:^|\n)\s*(?:[-*•]|\d+[.、)])\s*(.+?)(?=\n\s*(?:[-*•]|\d+[.、)])\s*|$)", re.S)
+    return [re.sub(r"\s+", "", item).strip() for item in pattern.findall(answer) if item.strip()]
+
+
+def count_sentences(answer: str) -> int:
+    parts = [part.strip() for part in re.split(r"[。！？!?]+", answer) if part.strip()]
+    return len(parts)
+
+
+def criterion_matches(answer: str, criterion: dict) -> bool:
+    normalized = answer.lower()
+    compact = re.sub(r"\s+", "", answer)
+    list_items = extract_list_items(answer)
+
+    if criterion.get("any_of") and not any(term.lower() in normalized for term in criterion["any_of"]):
+        return False
+    if criterion.get("all_of") and not all(term.lower() in normalized for term in criterion["all_of"]):
+        return False
+    if criterion.get("none_of") and any(term.lower() in normalized for term in criterion["none_of"]):
+        return False
+    if criterion.get("regex_any") and not any(re.search(pattern, answer, re.I | re.M) for pattern in criterion["regex_any"]):
+        return False
+    if "min_list_items" in criterion and len(list_items) < int(criterion["min_list_items"]):
+        return False
+    if "exact_list_items" in criterion and len(list_items) != int(criterion["exact_list_items"]):
+        return False
+    if "max_list_item_chars" in criterion:
+        if not list_items or any(len(item) > int(criterion["max_list_item_chars"]) for item in list_items):
+            return False
+    sentence_count = count_sentences(answer)
+    if "min_sentences" in criterion and sentence_count < int(criterion["min_sentences"]):
+        return False
+    if "max_sentences" in criterion and sentence_count > int(criterion["max_sentences"]):
+        return False
+    if "min_chars" in criterion and len(compact) < int(criterion["min_chars"]):
+        return False
+    if "max_chars" in criterion and len(compact) > int(criterion["max_chars"]):
+        return False
+    return True
+
+
+def score_answer(answer: str, criteria: list[dict], expected_points: list[str]) -> tuple[float, int, list[dict]]:
+    """Score transparent rubric criteria; retain the old phrase matcher as a fallback."""
+    if criteria:
+        results = [
+            {"label": item.get("label", f"criterion_{index}"), "passed": criterion_matches(answer, item)}
+            for index, item in enumerate(criteria, start=1)
+        ]
+        hits = sum(1 for item in results if item["passed"])
+        score = round((hits / len(results)) * 5, 2)
+        return score, hits, results
+
     normalized = answer.lower()
     hits = 0
+    results = []
     for point in expected_points:
-        if point.lower() in normalized:
-            hits += 1
-            continue
-        # Chinese phrase matching is strict; give partial credit for compact key fragments.
-        fragments = [frag for frag in point.replace("，", " ").replace("、", " ").split() if len(frag) >= 2]
-        if fragments and any(fragment.lower() in normalized for fragment in fragments):
-            hits += 1
+        matched = point.lower() in normalized
+        if not matched:
+            fragments = [frag for frag in re.split(r"[，、；;\s]+", point) if len(frag) >= 2]
+            matched = bool(fragments and any(fragment.lower() in normalized for fragment in fragments))
+        hits += int(matched)
+        results.append({"label": point, "passed": matched})
     score = round((hits / max(len(expected_points), 1)) * 5, 2)
-    return score, hits
+    return score, hits, results
 
 
-def score_rows(rows: list[dict]) -> list[dict]:
+def score_rows(rows: list[dict], cases_by_id: dict[str, dict]) -> list[dict]:
     scored = []
     for row in rows:
-        score, hits = score_answer(row["answer"], row["expected_points"])
+        case = cases_by_id.get(row["case_id"], {})
+        criteria = case.get("criteria", row.get("criteria", []))
+        expected_points = case.get("expected_points", row.get("expected_points", []))
+        score, hits, criterion_results = score_answer(row["answer"], criteria, expected_points)
+        total_points = len(criteria) if criteria else len(expected_points)
         scored.append(
             {
                 "model": row["model"],
@@ -200,8 +259,9 @@ def score_rows(rows: list[dict]) -> list[dict]:
                 "input": row["input"],
                 "answer": row["answer"],
                 "matched_points": hits,
-                "total_points": len(row["expected_points"]),
+                "total_points": total_points,
                 "score_5": score,
+                "criterion_results": criterion_results,
                 "elapsed_sec": row.get("elapsed_sec", ""),
             }
         )
@@ -253,41 +313,93 @@ def summarize(scored_rows: list[dict]) -> tuple[list[dict], list[dict]]:
     return model_summary, category_summary
 
 
+def validate_score_distribution(model_summary: list[dict]) -> None:
+    scores = [float(row["avg_score_5"]) for row in model_summary]
+    if not scores:
+        raise ValueError("No model scores were produced.")
+    if max(scores) <= 0.25:
+        raise ValueError(
+            "All model scores are near zero. Check that the evaluation cases match the responses "
+            "and use the v2 criteria rubric before interpreting charts."
+        )
+
+
 def make_charts(output_dir: Path, model_summary: list[dict], category_summary: list[dict]) -> None:
     import matplotlib.pyplot as plt
     import pandas as pd
+    import seaborn as sns
 
-    model_df = pd.DataFrame(model_summary)
-    ax = model_df.plot(kind="bar", x="model", y="avg_score_5", legend=False, color="#2f6f73", figsize=(7, 4))
-    ax.set_title("Overall Model Score Comparison")
-    ax.set_xlabel("Model")
-    ax.set_ylabel("Average Score (5-point scale)")
-    ax.set_ylim(0, 5)
-    for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
-    plt.tight_layout()
-    plt.savefig(output_dir / "overall_score_comparison.png", dpi=180)
-    plt.close()
+    sns.set_theme(style="whitegrid")
+    model_df = pd.DataFrame(model_summary).sort_values("avg_score_5", ascending=True)
+    prompt_counts = sorted({int(value) for value in model_df["case_count"]})
+    prompt_scope = str(prompt_counts[0]) if len(prompt_counts) == 1 else f"{prompt_counts[0]}–{prompt_counts[-1]}"
+    fig, ax = plt.subplots(figsize=(8, 4.8), facecolor="#FCFCFD")
+    sns.barplot(
+        data=model_df,
+        x="avg_score_5",
+        y="model",
+        color="#A3BEFA",
+        edgecolor="#2E4780",
+        linewidth=1.0,
+        ax=ax,
+    )
+    ax.set_title("Overall model rubric score", loc="left", fontsize=14, fontweight="semibold")
+    ax.text(0, 1.02, f"{prompt_scope} prompts per model; 4 transparent criteria per prompt; 0–5 scale", transform=ax.transAxes, color="#6F768A", fontsize=9)
+    ax.set_xlabel("Average score (0–5)")
+    ax.set_ylabel("")
+    ax.set_xlim(0, 5)
+    ax.grid(axis="x", color="#E6E8F0", linewidth=0.8)
+    ax.grid(axis="y", visible=False)
+    for patch, value in zip(ax.patches, model_df["avg_score_5"]):
+        ax.text(min(float(value) + 0.06, 4.86), patch.get_y() + patch.get_height() / 2, f"{value:.2f}", va="center", fontsize=9, color="#1F2430")
+    sns.despine(ax=ax)
+    fig.tight_layout()
+    fig.savefig(output_dir / "overall_score_comparison.png", dpi=180, bbox_inches="tight")
+    plt.close(fig)
     log(f"[charts] wrote {output_dir / 'overall_score_comparison.png'}")
 
     cat_df = pd.DataFrame(category_summary)
     cat_df["category_label_en"] = cat_df["category_label"].map(CATEGORY_LABELS_EN).fillna(cat_df["category"])
     pivot = cat_df.pivot(index="category_label_en", columns="model", values="avg_score_5")
-    ax = pivot.plot(kind="bar", figsize=(9, 4))
-    ax.set_title("Score Comparison by Evaluation Dimension")
-    ax.set_xlabel("Evaluation Dimension")
-    ax.set_ylabel("Average Score (5-point scale)")
-    ax.set_ylim(0, 5)
-    plt.xticks(rotation=20, ha="right")
-    plt.tight_layout()
-    plt.savefig(output_dir / "category_score_comparison.png", dpi=180)
-    plt.close()
+    category_counts = sorted({int(value) for value in cat_df["case_count"]})
+    category_scope = str(category_counts[0]) if len(category_counts) == 1 else f"{category_counts[0]}–{category_counts[-1]}"
+    category_order = [
+        "In-domain Training Topics",
+        "In-domain Generalization",
+        "Instruction Following",
+        "Safety Boundaries",
+        "Out-of-domain Ability",
+    ]
+    pivot = pivot.reindex([item for item in category_order if item in pivot.index])
+    fig, ax = plt.subplots(figsize=(9.5, 5.2), facecolor="#FCFCFD")
+    cmap = sns.blend_palette(["#FFFFFF", "#EAF1FE", "#CEDFFE", "#A3BEFA", "#5477C4"], as_cmap=True)
+    sns.heatmap(
+        pivot,
+        ax=ax,
+        cmap=cmap,
+        vmin=0,
+        vmax=5,
+        annot=True,
+        fmt=".2f",
+        linewidths=1,
+        linecolor="#FFFFFF",
+        cbar_kws={"label": "Average score (0–5)"},
+    )
+    ax.set_title("Model score by evaluation dimension", loc="left", fontsize=14, fontweight="semibold")
+    ax.text(0, 1.04, f"Each cell averages {category_scope} prompt(s); inspect safety as a hard gate, not only as part of the overall mean", transform=ax.transAxes, color="#6F768A", fontsize=9)
+    ax.set_xlabel("Model")
+    ax.set_ylabel("")
+    ax.tick_params(axis="x", rotation=25)
+    ax.tick_params(axis="y", rotation=0)
+    fig.tight_layout()
+    fig.savefig(output_dir / "category_score_comparison.png", dpi=180, bbox_inches="tight")
+    plt.close(fig)
     log(f"[charts] wrote {output_dir / 'category_score_comparison.png'}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cases", default=str(ROOT / "data" / "evaluation" / "model_eval_cases.json"))
+    parser.add_argument("--cases", default=str(ROOT / "data" / "evaluation" / "model_eval_cases_v2.json"))
     parser.add_argument("--output-dir", default=str(ROOT / "output" / "evaluation_comparison"))
     parser.add_argument("--base-model", default="../models/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--model", action="append", default=None, help="name=base|adapter|merged:path")
@@ -326,7 +438,8 @@ def main() -> None:
             log(f"[responses] checkpoint wrote rows={len(rows)} path={output_dir / 'responses.json'}")
 
     log(f"[score] scoring rows={len(rows)}")
-    scored_rows = score_rows(rows)
+    cases_by_id = {case["id"]: case for case in cases}
+    scored_rows = score_rows(rows, cases_by_id)
     model_summary, category_summary = summarize(scored_rows)
 
     write_csv(output_dir / "case_scores.csv", scored_rows)
@@ -336,6 +449,7 @@ def main() -> None:
     write_json(output_dir / "summary_by_model.json", model_summary)
     write_json(output_dir / "summary_by_category.json", category_summary)
     log("[score] wrote CSV/JSON score files")
+    validate_score_distribution(model_summary)
     make_charts(output_dir, model_summary, category_summary)
 
     log(f"wrote={output_dir}")
