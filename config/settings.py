@@ -47,6 +47,7 @@ SAFETY_CONFIG = {
     "keywords_path": str(PROJECT_ROOT / "config" / "crisis_keywords.json"),
     "embedding_model": "BAAI/bge-small-zh-v1.5",
     "semantic_threshold": 0.85,
+    "semantic_enabled": True,
 }
 
 TOOLS_CONFIG = {
