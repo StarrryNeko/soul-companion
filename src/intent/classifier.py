@@ -30,6 +30,7 @@ class IntentClassifier:
     ]
 
     def classify(self, user_input: str) -> str:
+        """根据关键词将输入路由到情绪记录、呼吸练习、心理健康或通用对话。"""
         text = user_input.strip()
         if any(keyword in text for keyword in self.emotion_log_keywords):
             return "tool_emotion_log"

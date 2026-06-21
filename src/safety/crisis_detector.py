@@ -38,6 +38,7 @@ class CrisisDetector:
         self.medium_risk_examples = payload.get("medium_risk_examples", [])
 
     def check(self, user_input: str) -> dict:
+        """先做确定性关键词检测，再可选做语义匹配，返回结构化风险结果。"""
         text = user_input.strip().lower()
         for keyword in self.high_risk:
             if keyword.lower() in text:

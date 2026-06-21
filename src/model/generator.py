@@ -28,6 +28,7 @@ class ResponseGenerator:
         self.last_error: str | None = None
 
     def set_chat_model(self, backend: str, external_model: str | None = None) -> None:
+        """设置后续生成使用的后端，并可选覆盖外部 API 模型名。"""
         allowed_backends = {"auto", "local_model", "deepseek_api", "template"}
         if backend not in allowed_backends:
             raise ValueError(f"Unsupported chat backend: {backend}")
@@ -70,6 +71,7 @@ class ResponseGenerator:
         chat_history: list | None = None,
         max_new_tokens: int | None = None,
     ) -> str:
+        """按当前后端偏好生成回复，在 auto 模式中依次尝试本地模型、API 和模板。"""
         context = retrieved_context or []
         token_budget = max_new_tokens or MODEL_CONFIG["max_new_tokens"]
         self.last_error = None

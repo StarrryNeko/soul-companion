@@ -19,6 +19,7 @@ class CrisisResourceTool(BaseTool):
         return "检测到危机信号时，返回固定安全转介话术。"
 
     def execute(self, **kwargs) -> dict:
+        """从安全配置读取固定危机回复，避免高风险场景依赖模型生成。"""
         path = Path(SAFETY_CONFIG["keywords_path"])
         payload = json.loads(path.read_text(encoding="utf-8"))
         return {
@@ -29,4 +30,3 @@ class CrisisResourceTool(BaseTool):
                 "note": "真实部署前请替换为学校或当地官方资源。",
             },
         }
-

@@ -78,6 +78,7 @@ class BreathingExerciseTool(BaseTool):
         return "根据用户状态推荐呼吸或放松练习。"
 
     def execute(self, emotion_type: str = "default", user_input: str = "", **kwargs) -> dict:
+        """根据指定情绪或输入关键词，返回匹配的呼吸/落地练习步骤。"""
         key = emotion_type
         for candidate in self.EXERCISES:
             if candidate != "default" and candidate in user_input:

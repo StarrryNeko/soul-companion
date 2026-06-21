@@ -4,22 +4,69 @@
 
 核心技术栈：LLaMA-Factory（SFT + LoRA）+ Gradio + ChromaDB。
 
+## 主要功能
+
+- 多后端对话：支持本地微调模型、DeepSeek API 和离线模板兜底，可在页面中切换。
+- 安全路由：先检测危机关键词和语义信号，命中后跳过模型生成并返回固定安全转介信息。
+- RAG 知识库：从本地心理健康科普文档检索相关内容，ChromaDB 不可用时退化为关键词检索。
+- 辅助工具：提供情绪记录、历史查看/清理和呼吸放松练习。
+- 训练与评估：包含 LLaMA-Factory LoRA/QLoRA 配置、数据校验、多模型评分和 loss 曲线对比脚本。
+
 ## 重要声明
 
 本项目仅用于学习和课程展示，不提供心理咨询、医学诊断、治疗或用药建议。若用户出现自伤、自杀或即时危险信号，系统应优先输出现实支持和专业转介信息。
 
-## 快速开始
+## 环境配置
+
+建议使用 Python 3.10 和独立虚拟环境。在项目根目录 `soul-companion/` 中执行：
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# Linux / macOS
+source .venv/bin/activate
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
 pip install -r requirements.txt
-python scripts/validate_data.py
-python scripts/build_knowledge_base.py
-python src/main.py
 ```
 
+可选环境变量：
+
+| 变量 | 默认值 | 作用 |
+| --- | --- | --- |
+| `SOUL_LOAD_LOCAL_MODEL` | `1` | 设为 `0` 时不加载本地模型，适合轻量演示/测试 |
+| `SOUL_BASE_MODEL` | `../models/Qwen2.5-1.5B-Instruct` | 基础模型本地路径或模型标识 |
+| `SOUL_MODEL_CACHE_DIR` | `models/` | Hugging Face/ModelScope 模型缓存目录 |
+| `SOUL_USE_MODELSCOPE` | `1` | 是否允许通过 ModelScope 解析模型 |
+| `SOUL_MAX_NEW_TOKENS` | `320` | 单次回复最大生成 token 数 |
+| `DEEPSEEK_API_KEY` | 未设置 | 启用 DeepSeek API 后端；不设置仍可用本地模型/模板 |
+| `DEEPSEEK_MODEL` | `deepseek-chat` | DeepSeek 默认模型名 |
+| `GRADIO_SERVER_NAME` | `127.0.0.1` | Gradio 监听地址 |
+| `GRADIO_SERVER_PORT` | `7860` | Gradio 监听端口 |
+
+PowerShell 配置示例：
+
+```powershell
+$env:SOUL_LOAD_LOCAL_MODEL = "0"
+$env:DEEPSEEK_API_KEY = "your-api-key"  # 仅在使用 API 时需要
+```
+
+API Key 只应通过环境变量提供，不要写入代码或提交到版本库。
+
+## 如何运行
+
+首次运行先校验数据并构建知识库：
+
+```bash
+python scripts/validate_data.py
+python scripts/build_knowledge_base.py
+```
+
+启动 Gradio 应用：
+
+```bash
 python -m src.main
+```
 
 打开 Gradio 页面：
 

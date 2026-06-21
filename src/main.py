@@ -6,6 +6,7 @@ from src.ui.gradio_app import create_app
 
 
 def main() -> None:
+    """初始化对话流水线并按 UI 配置启动 Gradio 服务。"""
     pipeline = MentalHealthPipeline()
     app = create_app(pipeline)
     app.launch(
@@ -17,4 +18,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

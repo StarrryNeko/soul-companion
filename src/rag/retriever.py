@@ -18,6 +18,7 @@ class KnowledgeRetriever:
         self._collection = None
 
     def retrieve(self, query: str, top_k: int | None = None) -> list[dict]:
+        """检索最相关的知识库片段；向量检索失败时自动使用本地关键词检索。"""
         top_k = top_k or RAG_CONFIG["top_k"]
         try:
             return self._retrieve_chroma(query, top_k)

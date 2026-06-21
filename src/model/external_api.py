@@ -36,6 +36,7 @@ class DeepSeekFallbackClient:
         chat_history: list | None = None,
         max_new_tokens: int | None = None,
     ) -> str:
+        """调用 DeepSeek 兼容的 chat completions 接口，并在请求失败时抛出统一异常。"""
         if not self.available:
             raise ExternalAPIError(f"Missing API key environment variable: {self.config['api_key_env']}")
 

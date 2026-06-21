@@ -64,6 +64,7 @@ class MentalHealthPipeline:
         return self.CHAT_MODEL_OPTIONS["auto"]["label"]
 
     def switch_chat_model(self, selected_label: str) -> str:
+        """按界面显示名切换本地或远程对话后端，并返回状态文本。"""
         local_option = next((option for option in self.local_model_options if option["label"] == selected_label), None)
         if local_option is not None:
             return self._switch_local_model(local_option)
@@ -134,6 +135,7 @@ class MentalHealthPipeline:
             return None, None
 
     def process(self, user_input: str, chat_history: list | None = None) -> dict:
+        """执行单轮对话主流程：输入校验、危机检测、意图路由、RAG 和回复生成。"""
         text = (user_input or "").strip()
         if not text:
             return self._result(self.fallback.handle_invalid_input("empty"), "invalid")
@@ -212,6 +214,7 @@ class MentalHealthPipeline:
             return None
 
     def get_model_status(self) -> str:
+        """生成供 UI 展示的当前后端、本地模型和加载错误摘要。"""
         info = self.model_info
         selected = self.generator.get_selected_model_label()
         if info["backend"] != "local_model":

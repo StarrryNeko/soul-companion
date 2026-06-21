@@ -45,6 +45,7 @@ class ModelLoader:
         return snapshot_download(model_path, cache_dir=cache_dir)
 
     def load(self):
+        """加载 tokenizer 和因果语言模型，并记录模型类型、路径与量化信息。"""
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 

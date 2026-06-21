@@ -54,6 +54,7 @@ class EmotionLoggerTool(BaseTool):
         self.log_path = Path(log_path or TOOLS_CONFIG["emotion_log_path"])
 
     def parse(self, user_input: str) -> dict:
+        """从自然语言中提取情绪、1–10 强度和原始备注。"""
         emotion = self.detect_emotion(user_input) or "未标注"
         match = re.search(r"(10|[1-9])\s*(?:分|级|/10)", user_input)
         if match is None:
@@ -69,6 +70,7 @@ class EmotionLoggerTool(BaseTool):
         return None
 
     def should_auto_record(self, user_input: str, intent: str | None = None) -> bool:
+        """判断输入是否在表达个人情绪，以避免记录翻译、代码等非个人语句。"""
         text = user_input.strip()
         if not text or any(cue in text for cue in self.NON_PERSONAL_CUES):
             return False
@@ -79,6 +81,7 @@ class EmotionLoggerTool(BaseTool):
         return any(cue in text for cue in self.AUTO_RECORD_CUES)
 
     def execute(self, emotion: str, intensity: int = 5, note: str = "") -> dict:
+        """将一条标准化情绪记录追加到本地 JSON 文件。"""
         intensity = max(1, min(int(intensity), 10))
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"records": []}

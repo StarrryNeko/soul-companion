@@ -25,6 +25,7 @@ class KnowledgeBaseIndexer:
         self.chunk_overlap = chunk_overlap or RAG_CONFIG["chunk_overlap"]
 
     def build(self) -> None:
+        """切分本地 Markdown 文档、生成向量，并重建持久化 ChromaDB 集合。"""
         import chromadb
         from sentence_transformers import SentenceTransformer
 
